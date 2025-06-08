@@ -5,9 +5,22 @@ from collections import defaultdict
 app = Flask(__name__)
 
 API_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
-GOOGLE_MAPS_KEY = "YOUR_GOOGLE_MAPS_API_KEY"
+GOOGLE_MAPS_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
+GOOGLE_GEOCODE_API = "AIzaSyCMQoiZazWDcRQbnKJ3Ti8NT8bvW9xBiDY"
 DEFAULT_LAT = 37.5665
 DEFAULT_LON = 126.9780
+
+def reverse_geocode(lat, lon):
+    try:
+        url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lon}&key={GOOGLE_GEOCODE_API}"
+        response = requests.get(url)
+        data = response.json()
+        if data['status'] == 'OK' and len(data['results']) > 0:
+            return data['results'][0]['formatted_address']
+        else:
+            return "주소 정보 없음"
+    except:
+        return "주소 변환 실패"
 
 def get_weather(lat, lon):
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
@@ -107,7 +120,7 @@ def index():
     task = None
     forecast_result = []
     task_schedule = {}
-    location_name = ""
+    location_name = "위치 정보 없음"
     lat = DEFAULT_LAT
     lon = DEFAULT_LON
 
@@ -119,6 +132,7 @@ def index():
             lat = DEFAULT_LAT
             lon = DEFAULT_LON
 
+        location_name = reverse_geocode(lat, lon)
         task = request.form.get("task")
         weather, error = get_weather(lat, lon)
         forecast, f_error = get_forecast(lat, lon)
@@ -131,7 +145,7 @@ def index():
             forecast_result = forecast
             task_schedule = generate_task_schedule(forecast)
 
-    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name, lat=lat, lon=lon, gmap_key=GOOGLE_MAPS_KEY)
+    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name, lat=lat, lon=lon)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
