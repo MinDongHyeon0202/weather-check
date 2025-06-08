@@ -46,6 +46,27 @@
   {% endfor %}
 </table>
 {% endif %}
+{% if schedule %}
+<h3>📌 시간대별 작업 추천 스케줄</h3>
+<table border="1" cellpadding="6">
+  <tr>
+    <th>시간</th>
+    <th>가능한 작업 공정</th>
+  </tr>
+  {% for time, task_list in schedule.items() %}
+  <tr>
+    <td>{{ time }}</td>
+    <td>
+      {% if task_list %}
+        {{ task_list|join(', ') }}
+      {% else %}
+        없음
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
 
     </div>
 </body>
