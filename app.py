@@ -55,16 +55,24 @@ def check_conditions(task, temp, humidity, wind, rain):
         return "알 수 없는 공정입니다."
 
 tasks = ["콘크리트 타설", "방수공사", "도장공사", "철근 배근", "골조 작업"]
-print("🔧 공정 선택:")
-for i, task in enumerate(tasks, 1):
-    print(f"{i}. {task}")
 
-task_index = int(input("작업 번호를 입력하세요 (1~5): ")) - 1
-task_name = tasks[task_index]
+@app.route("/", methods=["GET", "POST"])
+def index():
+    result = None
+    weather = None
+    error = None
+    task = None
 
-print(f"\n➡️ 선택한 공정: {task_name}")
-print(f"📡 현재 기온: {temp}℃ / 습도: {humidity}% / 풍속: {wind}m/s / 강수량: {rain}mm")
+    if request.method == "POST":
+        task = request.form.get("task")
+        weather, error = get_weather()
+        if not error:
+            result = check_conditions(task, **weather)
 
-# 판단 결과
-result = check_conditions(task_name, temp, humidity, wind, rain)
-print(f"\n📋 판단 결과: {result}")
+    return render_template("index.html",
+        tasks=tasks,
+        result=result,
+        weather=weather,
+        error=error,
+        selected_task=task
+    )
