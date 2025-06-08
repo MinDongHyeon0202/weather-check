@@ -22,6 +22,8 @@
                     <option value="{{ t }}">{{ t }}</option>
                 {% endfor %}
             </select>
+            <input type="hidden" name="lat" id="lat">
+            <input type="hidden" name="lon" id="lon">
             <button type="submit">판단하기</button>
         </form>
         {% if weather %}
@@ -76,5 +78,13 @@
 {% endif %}
 
     </div>
+    <script>
+navigator.geolocation.getCurrentPosition(function(position) {
+  document.getElementById('lat').value = position.coords.latitude;
+  document.getElementById('lon').value = position.coords.longitude;
+}, function(error) {
+  console.warn('위치 정보를 가져오지 못했습니다:', error.message);
+});
+</script>
 </body>
 </html>
