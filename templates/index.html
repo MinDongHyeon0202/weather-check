@@ -6,6 +6,10 @@
     <title>건설 공정 판단 시스템</title>
     {% if location %}
 <p>📍 현재 위치: <strong>{{ location }}</strong></p>
+    {% if lat and lon %}
+<h3>🗺️ 내 위치 지도</h3>
+<img src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=13&size=600x300&markers=color:red%7Clabel:A%7C{{ lat }},{{ lon }}&key=AIzaSyDs_I-NsX3VV_mehgJ1xAytxc_H1J2JjhM" alt="지도">
+{% endif %}
 {% endif %}
     <!-- 생략: 스타일 -->
 </head>
