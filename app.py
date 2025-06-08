@@ -143,7 +143,7 @@ def index():
             forecast_result = forecast
             task_schedule = generate_task_schedule(forecast)
 
-    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name)
+    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name,lat=lat,lon=lon)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
