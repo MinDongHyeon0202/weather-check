@@ -15,9 +15,14 @@ def get_client_location(ip_address):
         data = res.json()
         lat = data.get("latitude", DEFAULT_LAT)
         lon = data.get("longitude", DEFAULT_LON)
-        city = data.get("city", "Unknown")
-        region = data.get("region", "")
-        location_name = f"{region} {city}".strip()
+        city = data.get("city") or ""
+        region = data.get("region") or ""
+
+        if not city and not region:
+            location_name = "위치 알 수 없음"
+        else:
+            location_name = f"{region} {city}".strip()
+
         return lat, lon, location_name
     except:
         return DEFAULT_LAT, DEFAULT_LON, "위치 확인 실패"
