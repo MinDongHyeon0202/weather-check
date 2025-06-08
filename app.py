@@ -15,9 +15,12 @@ def get_client_location(ip_address):
         data = res.json()
         lat = data.get("latitude", DEFAULT_LAT)
         lon = data.get("longitude", DEFAULT_LON)
-        return lat, lon
+        city = data.get("city", "Unknown")
+        region = data.get("region", "")
+        location_name = f"{region} {city}".strip()
+        return lat, lon, location_name
     except:
-        return DEFAULT_LAT, DEFAULT_LON
+        return DEFAULT_LAT, DEFAULT_LON, "위치 확인 실패"
 
 def get_weather(lat, lon):
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
@@ -117,9 +120,10 @@ def index():
     task = None
     forecast_result = []
     task_schedule = {}
+    location_name = ""
 
     ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
-    lat, lon = get_client_location(ip_address)
+    lat, lon, location_name = get_client_location(ip_address)
 
     if request.method == "POST":
         task = request.form.get("task")
@@ -134,7 +138,7 @@ def index():
             forecast_result = forecast
             task_schedule = generate_task_schedule(forecast)
 
-    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule)
+    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
