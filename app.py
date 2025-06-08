@@ -5,7 +5,7 @@ from collections import defaultdict
 app = Flask(__name__)
 
 API_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
-GOOGLE_MAPS_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
+GOOGLE_MAPS_KEY = "YOUR_GOOGLE_MAPS_API_KEY"
 DEFAULT_LAT = 37.5665
 DEFAULT_LON = 126.9780
 
