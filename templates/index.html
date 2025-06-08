@@ -1,54 +1,71 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>건설 공정 판단 시스템</title>
-    {% if location %}
-<p>📍 현재 위치: <strong>{{ location }}</strong></p>
-    {% if lat and lon %}
-<h3>🗺️ 내 위치 지도</h3>
-<img src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=13&size=600x300&markers=color:red%7Clabel:A%7C{{ lat }},{{ lon }}&key=AIzaSyDs_I-NsX3VV_mehgJ1xAytxc_H1J2JjhM" alt="지도">
-{% endif %}
-{% endif %}
-    <!-- 생략: 스타일 -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>건설 공정 판단 시스템</title>
+
+  <!-- 위치 출력 -->
+  {% if location %}
+    <p>📍 현재 위치: <strong>{{ location }}</strong></p>
+  {% endif %}
+
+  <!-- Google 지도 출력 (헤더용) -->
+  {% if lat and lon and gmap_key %}
+    <h3>🗺️ 내 위치 지도 (상단)</h3>
+    <img
+      src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=13&size=600x300&markers=color:red%7Clabel:A%7C{{ lat }},{{ lon }}&key={{ gmap_key }}"
+      alt="지도"
+    />
+  {% endif %}
 </head>
+
 <body>
-    <div class="container">
-        <h1>건설 공정 판단 시스템 🌦️</h1>
-<form method="POST">
-  <label for="task">공정을 선택하세요:</label>
-  <select name="task" id="task" required>
-      {% for t in tasks %}
+  <div class="container">
+    <h1>건설 공정 판단 시스템 🌦️</h1>
+
+    <form method="POST">
+      <label for="task">공정을 선택하세요:</label>
+      <select name="task" id="task" required>
+        {% for t in tasks %}
           <option value="{{ t }}" {% if selected_task == t %}selected{% endif %}>{{ t }}</option>
-      {% endfor %}
-  </select>
+        {% endfor %}
+      </select>
 
-  <input type="hidden" name="lat" id="lat">
-  <input type="hidden" name="lon" id="lon">
+      <!-- 숨은 입력 필드 (브라우저 GPS 위치) -->
+      <input type="hidden" name="lat" id="lat" />
+      <input type="hidden" name="lon" id="lon" />
 
-  <button type="submit">판단하기</button>
-</form>
+      <!-- 하단 지도 및 위경도 -->
+      {% if lat and lon and gmap_key %}
+        <h3>📍 현재 위치 지도 (Google Maps)</h3>
+        <img
+          src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=14&size=600x300&markers=color:red%7Clabel:현위치%7C{{ lat }},{{ lon }}&key={{ gmap_key }}"
+          alt="Google 지도"
+        />
+      {% endif %}
 
-<!-- ✅ 위치 확인용 위경도 출력 -->
-{% if lat and lon %}
-<p>
-  📍 현재 위도: <strong>{{ lat }}</strong><br>
-  📍 현재 경도: <strong>{{ lon }}</strong>
-</p>
+      <button type="submit">판단하기</button>
+    </form>
 
-<h3>🗺️ 현재 위치 지도</h3>
-<img src="https://staticmap.openstreetmap.de/staticmap.php?center={{ lat }},{{ lon }}&zoom=13&size=600x300&markers={{ lat }},{{ lon }},red-pushpin" alt="지도">
-{% endif %}
+    <!-- ✅ 위도/경도 출력 -->
+    {% if lat and lon %}
+      <p>✅ 현재 위도: <strong>{{ lat }}</strong></p>
+      <p>✅ 현재 경도: <strong>{{ lon }}</strong></p>
+    {% endif %}
+  </div>
 
-<!-- ✅ GPS 추출 스크립트 -->
-<script>
-navigator.geolocation.getCurrentPosition(function(position) {
-  document.getElementById('lat').value = position.coords.latitude;
-  document.getElementById('lon').value = position.coords.longitude;
-}, function(error) {
-  console.warn('위치 정보를 가져오지 못했습니다:', error.message);
-});
-</script>
+  <!-- ✅ 위치 추적 스크립트 -->
+  <script>
+    navigator.geolocation.getCurrentPosition(
+      function (position) {
+        document.getElementById("lat").value = position.coords.latitude;
+        document.getElementById("lon").value = position.coords.longitude;
+      },
+      function (error) {
+        console.warn("📡 위치 정보를 가져오지 못했습니다:", error.message);
+      }
+    );
+  </script>
 </body>
 </html>
