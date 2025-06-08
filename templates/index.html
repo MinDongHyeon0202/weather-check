@@ -23,6 +23,30 @@
         {% if result %}
             <p>📋 판단 결과: {{ result }}</p>
         {% endif %}
+        {% if forecast %}
+<h3>📆 24시간 예보 작업 가능성</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <th>시간</th>
+    <th>기온(℃)</th>
+    <th>습도(%)</th>
+    <th>풍속(m/s)</th>
+    <th>강수(mm)</th>
+    <th>판단</th>
+  </tr>
+  {% for f in forecast %}
+  <tr>
+    <td>{{ f.time }}</td>
+    <td>{{ f.temp }}</td>
+    <td>{{ f.humidity }}</td>
+    <td>{{ f.wind }}</td>
+    <td>{{ f.rain }}</td>
+    <td>{{ f.judgment }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
     </div>
 </body>
 </html>
