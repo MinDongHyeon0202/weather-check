@@ -4,26 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>건설 공정 판단 시스템</title>
-
-  <!-- 위치 출력 -->
-  {% if location %}
-    <p>📍 현재 위치: <strong>{{ location }}</strong></p>
-  {% endif %}
-
-  <!-- Google 지도 출력 (헤더용) -->
-  {% if lat and lon and gmap_key %}
-    <h3>🗺️ 내 위치 지도 (상단)</h3>
-    <img
-      src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=13&size=600x300&markers=color:red%7Clabel:A%7C{{ lat }},{{ lon }}&key={{ gmap_key }}"
-      alt="지도"
-    />
-  {% endif %}
 </head>
 
 <body>
   <div class="container">
     <h1>건설 공정 판단 시스템 🌦️</h1>
 
+    <!-- 위치 정보 -->
+    {% if location %}
+      <p>📍 현재 위치: <strong>{{ location }}</strong></p>
+    {% endif %}
+
+    <!-- ✅ Google Static Map만 출력 -->
+    {% if lat and lon and gmap_key %}
+      <h3>🗺️ 현재 위치 지도 (Google Maps)</h3>
+      <img
+        src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=14&size=600x300&markers=color:red%7Clabel:%E2%9C%94%7C{{ lat }},{{ lon }}&key={{ gmap_key }}"
+        alt="Google 지도"
+      />
+    {% endif %}
+
+    <!-- 공정 선택 폼 -->
     <form method="POST">
       <label for="task">공정을 선택하세요:</label>
       <select name="task" id="task" required>
@@ -32,30 +33,20 @@
         {% endfor %}
       </select>
 
-      <!-- 숨은 입력 필드 (브라우저 GPS 위치) -->
+      <!-- 숨은 GPS 위경도 -->
       <input type="hidden" name="lat" id="lat" />
       <input type="hidden" name="lon" id="lon" />
-
-      <!-- 하단 지도 및 위경도 -->
-      {% if lat and lon and gmap_key %}
-        <h3>📍 현재 위치 지도 (Google Maps)</h3>
-        <img
-          src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=14&size=600x300&markers=color:red%7Clabel:현위치%7C{{ lat }},{{ lon }}&key={{ gmap_key }}"
-          alt="Google 지도"
-        />
-      {% endif %}
 
       <button type="submit">판단하기</button>
     </form>
 
-    <!-- ✅ 위도/경도 출력 -->
+    <!-- 위도/경도 출력 (선택 사항) -->
     {% if lat and lon %}
-      <p>✅ 현재 위도: <strong>{{ lat }}</strong></p>
-      <p>✅ 현재 경도: <strong>{{ lon }}</strong></p>
+      <p>📌 위도: {{ lat }}, 경도: {{ lon }}</p>
     {% endif %}
   </div>
 
-  <!-- ✅ 위치 추적 스크립트 -->
+  <!-- 브라우저 GPS 좌표 수신 -->
   <script>
     navigator.geolocation.getCurrentPosition(
       function (position) {
@@ -63,9 +54,10 @@
         document.getElementById("lon").value = position.coords.longitude;
       },
       function (error) {
-        console.warn("📡 위치 정보를 가져오지 못했습니다:", error.message);
+        console.warn(\"[위치 오류]\", error.message);
       }
     );
   </script>
 </body>
 </html>
+
