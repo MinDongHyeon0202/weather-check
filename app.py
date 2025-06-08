@@ -8,25 +8,6 @@ API_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
 DEFAULT_LAT = 37.5665
 DEFAULT_LON = 126.9780
 
-def get_client_location(ip_address):
-    try:
-        geo_url = f"https://ipapi.co/{ip_address}/json/"
-        res = requests.get(geo_url)
-        data = res.json()
-        lat = data.get("latitude", DEFAULT_LAT)
-        lon = data.get("longitude", DEFAULT_LON)
-        city = data.get("city") or ""
-        region = data.get("region") or ""
-
-        if not city and not region:
-            location_name = "위치 알 수 없음"
-        else:
-            location_name = f"{region} {city}".strip()
-
-        return lat, lon, location_name
-    except:
-        return DEFAULT_LAT, DEFAULT_LON, "위치 확인 실패"
-
 def get_weather(lat, lon):
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
     try:
@@ -126,12 +107,13 @@ def index():
     forecast_result = []
     task_schedule = {}
     location_name = ""
-
-    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
-    lat, lon, location_name = get_client_location(ip_address)
+    lat = DEFAULT_LAT
+    lon = DEFAULT_LON
 
     if request.method == "POST":
         task = request.form.get("task")
+        lat = float(request.form.get("lat", DEFAULT_LAT))
+        lon = float(request.form.get("lon", DEFAULT_LON))
         weather, error = get_weather(lat, lon)
         forecast, f_error = get_forecast(lat, lon)
         if not error:
@@ -143,7 +125,7 @@ def index():
             forecast_result = forecast
             task_schedule = generate_task_schedule(forecast)
 
-    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name,lat=lat,lon=lon)
+    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name, lat=lat, lon=lon)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
