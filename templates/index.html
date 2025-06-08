@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>건설 공정 판단 시스템</title>
+    <!-- 생략: 스타일 -->
+</head>
+<body>
+    <div class="container">
+        <h1>건설 공정 판단 시스템 🌦️</h1>
+        <form method="POST">
+            <select name="task">
+                {% for t in tasks %}
+                    <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">판단하기</button>
+        </form>
+        {% if weather %}
+            <p>현재 기온: {{ weather.temp }}℃</p>
+        {% endif %}
+        {% if result %}
+            <p>📋 판단 결과: {{ result }}</p>
+        {% endif %}
+    </div>
+</body>
+</html>
