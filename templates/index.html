@@ -14,10 +14,6 @@
       <p>📍 현재 위치: <strong>{{ location }}</strong></p>
     {% endif %}
 
-{% if location %}
-  <p>📍 현재 주소: <strong>{{ location }}</strong></p>
-{% endif %}
-    
     <form method="POST">
       <label for="task">공정을 선택하세요:</label>
       <select name="task" id="task" required>
