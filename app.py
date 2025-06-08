@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request
 import requests
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -31,7 +32,7 @@ def get_forecast():
         response = requests.get(url)
         data = response.json()
         forecast_list = []
-        for entry in data["list"][:8]:  # 하루치(3시간 간격 8개)
+        for entry in data["list"][:8]:
             temp = entry["main"]["temp"]
             humidity = entry["main"]["humidity"]
             wind = entry["wind"]["speed"]
@@ -86,6 +87,15 @@ def check_conditions(task, temp, humidity, wind, rain):
             return "✅ 가능"
     return "판단 불가"
 
+def generate_task_schedule(forecast_list):
+    task_schedule = defaultdict(list)
+    for entry in forecast_list:
+        for task in tasks:
+            result = check_conditions(task, entry["temp"], entry["humidity"], entry["wind"], entry["rain"])
+            if result.startswith("✅"):
+                task_schedule[entry["time"]].append(task)
+    return task_schedule
+
 tasks = ["콘크리트 타설", "방수공사", "도장공사", "철근 배근", "골조 작업"]
 
 @app.route("/", methods=["GET", "POST"])
@@ -95,6 +105,7 @@ def index():
     error = None
     task = None
     forecast_result = []
+    task_schedule = {}
 
     if request.method == "POST":
         task = request.form.get("task")
@@ -107,8 +118,9 @@ def index():
                 judgment = check_conditions(task, f["temp"], f["humidity"], f["wind"], f["rain"])
                 f["judgment"] = judgment
             forecast_result = forecast
+            task_schedule = generate_task_schedule(forecast)
 
-    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result)
+    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
