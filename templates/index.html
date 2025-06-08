@@ -10,21 +10,18 @@
   <div class="container">
     <h1>건설 공정 판단 시스템 🌦️</h1>
 
-    <!-- 위치 정보 -->
     {% if location %}
       <p>📍 현재 위치: <strong>{{ location }}</strong></p>
     {% endif %}
 
-    <!-- ✅ Google Static Map만 출력 -->
     {% if lat and lon and gmap_key %}
       <h3>🗺️ 현재 위치 지도 (Google Maps)</h3>
       <img
-        src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=14&size=600x300&markers=color:red%7Clabel:%E2%9C%94%7C{{ lat }},{{ lon }}&key={{ gmap_key }}"
+        src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=14&size=600x300&markers=color:red%7Clabel:A%7C{{ lat }},{{ lon }}&key={{ gmap_key }}"
         alt="Google 지도"
       />
     {% endif %}
 
-    <!-- 공정 선택 폼 -->
     <form method="POST">
       <label for="task">공정을 선택하세요:</label>
       <select name="task" id="task" required>
@@ -33,20 +30,51 @@
         {% endfor %}
       </select>
 
-      <!-- 숨은 GPS 위경도 -->
       <input type="hidden" name="lat" id="lat" />
       <input type="hidden" name="lon" id="lon" />
 
       <button type="submit">판단하기</button>
     </form>
 
-    <!-- 위도/경도 출력 (선택 사항) -->
-    {% if lat and lon %}
-      <p>📌 위도: {{ lat }}, 경도: {{ lon }}</p>
+    {% if result %}
+      <p>📋 판단 결과: {{ result }}</p>
+    {% endif %}
+
+    {% if forecast %}
+      <h3>📅 시간별 공정 판단 예보</h3>
+      <table border="1" cellpadding="5">
+        <tr>
+          <th>시간</th><th>기온</th><th>습도</th><th>풍속</th><th>강수</th><th>판단</th>
+        </tr>
+        {% for f in forecast %}
+        <tr>
+          <td>{{ f.time }}</td>
+          <td>{{ f.temp }}</td>
+          <td>{{ f.humidity }}</td>
+          <td>{{ f.wind }}</td>
+          <td>{{ f.rain }}</td>
+          <td>{{ f.judgment }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+
+    {% if schedule %}
+      <h3>📌 시간대별 가능한 공정 스케줄</h3>
+      <table border="1" cellpadding="5">
+        <tr>
+          <th>시간</th><th>가능한 공정</th>
+        </tr>
+        {% for t, plist in schedule.items() %}
+        <tr>
+          <td>{{ t }}</td>
+          <td>{{ plist | join(', ') }}</td>
+        </tr>
+        {% endfor %}
+      </table>
     {% endif %}
   </div>
 
-  <!-- 브라우저 GPS 좌표 수신 -->
   <script>
     navigator.geolocation.getCurrentPosition(
       function (position) {
@@ -54,10 +82,9 @@
         document.getElementById("lon").value = position.coords.longitude;
       },
       function (error) {
-        console.warn(\"[위치 오류]\", error.message);
+        console.warn("📍 위치 정보를 불러올 수 없습니다:", error.message);
       }
     );
   </script>
 </body>
 </html>
-
