@@ -5,6 +5,7 @@ from collections import defaultdict
 app = Flask(__name__)
 
 API_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
+GOOGLE_MAPS_KEY = "YOUR_GOOGLE_MAPS_API_KEY"
 DEFAULT_LAT = 37.5665
 DEFAULT_LON = 126.9780
 
@@ -125,7 +126,7 @@ def index():
             forecast_result = forecast
             task_schedule = generate_task_schedule(forecast)
 
-    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name, lat=lat, lon=lon)
+    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name, lat=lat, lon=lon, gmap_key=GOOGLE_MAPS_KEY)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
