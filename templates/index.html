@@ -14,14 +14,6 @@
       <p>📍 현재 위치: <strong>{{ location }}</strong></p>
     {% endif %}
 
-    {% if lat and lon and gmap_key %}
-      <h3>🗺️ 현재 위치 지도 (Google Maps)</h3>
-      <img
-        src="https://maps.googleapis.com/maps/api/staticmap?center={{ lat }},{{ lon }}&zoom=14&size=600x300&markers=color:red%7Clabel:A%7C{{ lat }},{{ lon }}&key={{ gmap_key }}"
-        alt="Google 지도"
-      />
-    {% endif %}
-
     <form method="POST">
       <label for="task">공정을 선택하세요:</label>
       <select name="task" id="task" required>
@@ -30,6 +22,7 @@
         {% endfor %}
       </select>
 
+      <!-- 숨은 위경도 필드 -->
       <input type="hidden" name="lat" id="lat" />
       <input type="hidden" name="lon" id="lon" />
 
