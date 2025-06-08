@@ -5,7 +5,7 @@ from collections import defaultdict
 app = Flask(__name__)
 
 API_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
-GOOGLE_MAPS_KEY = "YOUR_GOOGLE_MAPS_API_KEY"
+GOOGLE_MAPS_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
 DEFAULT_LAT = 37.5665
 DEFAULT_LON = 126.9780
 
@@ -112,9 +112,14 @@ def index():
     lon = DEFAULT_LON
 
     if request.method == "POST":
+        try:
+            lat = float(request.form.get("lat") or DEFAULT_LAT)
+            lon = float(request.form.get("lon") or DEFAULT_LON)
+        except (TypeError, ValueError):
+            lat = DEFAULT_LAT
+            lon = DEFAULT_LON
+
         task = request.form.get("task")
-        lat = float(request.form.get("lat", DEFAULT_LAT))
-        lon = float(request.form.get("lon", DEFAULT_LON))
         weather, error = get_weather(lat, lon)
         forecast, f_error = get_forecast(lat, lon)
         if not error:
