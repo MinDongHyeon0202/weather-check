@@ -5,11 +5,22 @@ from collections import defaultdict
 app = Flask(__name__)
 
 API_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
-LAT = 37.5665
-LON = 126.9780
+DEFAULT_LAT = 37.5665
+DEFAULT_LON = 126.9780
 
-def get_weather():
-    url = f"https://api.openweathermap.org/data/2.5/weather?lat={LAT}&lon={LON}&appid={API_KEY}&units=metric"
+def get_client_location(ip_address):
+    try:
+        geo_url = f"https://ipapi.co/{ip_address}/json/"
+        res = requests.get(geo_url)
+        data = res.json()
+        lat = data.get("latitude", DEFAULT_LAT)
+        lon = data.get("longitude", DEFAULT_LON)
+        return lat, lon
+    except:
+        return DEFAULT_LAT, DEFAULT_LON
+
+def get_weather(lat, lon):
+    url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
     try:
         response = requests.get(url)
         data = response.json()
@@ -26,8 +37,8 @@ def get_weather():
     except Exception as e:
         return None, str(e)
 
-def get_forecast():
-    url = f"https://api.openweathermap.org/data/2.5/forecast?lat={LAT}&lon={LON}&appid={API_KEY}&units=metric"
+def get_forecast(lat, lon):
+    url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
     try:
         response = requests.get(url)
         data = response.json()
@@ -49,43 +60,43 @@ def get_forecast():
     except Exception as e:
         return None, str(e)
 
-def check_conditions(task, temp, humidity, wind, rain):
+def get_risk_score(task, temp, humidity, wind, rain):
+    score = 100
     if task == "콘크리트 타설":
         if temp < 5 or temp > 30:
-            return "❌ 불가 - 기온"
-        elif rain > 0:
-            return "❌ 불가 - 강수"
-        elif wind > 7:
-            return "⚠️ 주의 - 강풍"
-        else:
-            return "✅ 가능"
+            score -= 40
+        if rain > 0:
+            score -= 40
+        if wind > 7:
+            score -= 20
     elif task == "방수공사":
         if humidity > 85:
-            return "❌ 불가 - 습도"
-        elif rain > 0:
-            return "❌ 불가 - 강수"
-        elif temp < 5:
-            return "❌ 불가 - 기온"
-        else:
-            return "✅ 가능"
+            score -= 30
+        if rain > 0:
+            score -= 40
+        if temp < 5:
+            score -= 30
     elif task == "도장공사":
         if humidity > 85 or temp < 5:
-            return "❌ 불가 - 기온/습도"
-        elif rain > 0:
-            return "❌ 불가 - 강수"
-        else:
-            return "✅ 가능"
+            score -= 40
+        if rain > 0:
+            score -= 40
     elif task == "철근 배근":
         if temp < -2 or rain > 0:
-            return "⚠️ 주의 - 결빙/강수"
-        else:
-            return "✅ 가능"
+            score -= 30
     elif task == "골조 작업":
         if wind > 10 or rain > 0:
-            return "❌ 불가 - 강풍/강수"
-        else:
-            return "✅ 가능"
-    return "판단 불가"
+            score -= 40
+    return max(score, 0)
+
+def check_conditions(task, temp, humidity, wind, rain):
+    score = get_risk_score(task, temp, humidity, wind, rain)
+    if score >= 80:
+        return f"✅ 가능 (위험도 {score}점)"
+    elif score >= 50:
+        return f"⚠️ 주의 (위험도 {score}점)"
+    else:
+        return f"❌ 불가 (위험도 {score}점)"
 
 def generate_task_schedule(forecast_list):
     task_schedule = defaultdict(list)
@@ -107,10 +118,13 @@ def index():
     forecast_result = []
     task_schedule = {}
 
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+    lat, lon = get_client_location(ip_address)
+
     if request.method == "POST":
         task = request.form.get("task")
-        weather, error = get_weather()
-        forecast, f_error = get_forecast()
+        weather, error = get_weather(lat, lon)
+        forecast, f_error = get_forecast(lat, lon)
         if not error:
             result = check_conditions(task, **weather)
         if not f_error:
