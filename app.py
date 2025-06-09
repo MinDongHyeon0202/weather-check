@@ -1,151 +1,185 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
 import requests
-from collections import defaultdict
+import pandas as pd
+from datetime import datetime, timedelta
+import pytz
+import os
+from dotenv import load_dotenv
+import matplotlib.pyplot as plt
 
+load_dotenv()
 app = Flask(__name__)
 
-API_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
-GOOGLE_MAPS_KEY = "1037010b96c78c7e5efbd3e69f7cdd44"
-GOOGLE_GEOCODE_API = "AIzaSyCMQoiZazWDcRQbnKJ3Ti8NT8bvW9xBiDY"
-DEFAULT_LAT = 37.5665
-DEFAULT_LON = 126.9780
+API_KEY = os.getenv("API_KEY")
+CITY = "Seoul"
+VISUAL_API_KEY = os.getenv("VISUAL_API_KEY")
 
-def reverse_geocode(lat, lon):
-    try:
-        url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lon}&key={GOOGLE_GEOCODE_API}"
-        response = requests.get(url)
-        data = response.json()
-        if data['status'] == 'OK' and len(data['results']) > 0:
-            return data['results'][0]['formatted_address']
-        else:
-            return "주소 정보 없음"
-    except:
-        return "주소 변환 실패"
+JOB_OPTIONS = {
+    "formwork": "외부비계설치",
+    "fence": "휀스설치",
+    "excavation": "터파기",
+    "soil_reinforce": "지반보강",
+    "backfill": "되메우기",
+    "concrete_base": "버림콘크리트",
+    "concrete_floor": "기초타설",
+    "floor1": "1층 타설",
+    "floor2": "2층 타설",
+    "floor3": "3층 타설",
+    "floor4": "4층 타설",
+    "floor5": "5층 타설",
+    "roof": "지붕 타설",
+    "waterproof_bath": "화장실 방수",
+    "waterproof_balcony": "발코니 방수",
+    "waterproof_roof": "옥상 방수",
+    "interior_plaster": "내부 미장",
+    "exterior_plaster": "외벽 미장",
+    "foam": "기포 타설",
+    "floor_finish": "방통",
+    "wood_partition": "목공 벽체",
+    "wood_ceiling": "목공 천정",
+    "wallpaper": "벽지",
+    "flooring": "마루 시공",
+    "tile_balcony": "발코니 타일",
+    "stone_stair": "계단 석재",
+    "window_frame": "창문틀",
+    "glass": "유리 끼우기",
+    "insulate_base": "기초 단열",
+    "insulate_wall": "외벽 단열",
+    "insulate_roof": "지붕 단열",
+    "brick_tile": "벽돌 타일",
+    "water_repellent": "발수재 도포",
+    "interior_paint": "내부 도장",
+    "exterior_paint": "외부 도장",
+    "roof_metal": "AL두겁",
+    "gutter": "홈통 설치",
+    "railing": "난간 설치",
+    "sink": "씽크대",
+    "cabinet": "신발장",
+    "light": "조명",
+    "wiring": "배선",
+    "telecom": "통신",
+    "pipe": "배관",
+    "equipment": "설비",
+    "fire": "소화기",
+    "sewage": "오배수",
+    "gas": "가스관",
+    "paving": "포장"
+}
 
-def get_weather(lat, lon):
-    url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
-    try:
-        response = requests.get(url)
-        data = response.json()
-        temp = data["main"]["temp"]
-        humidity = data["main"]["humidity"]
-        wind = data["wind"]["speed"]
-        rain = data.get("rain", {}).get("1h", 0)
-        return {
-            "temp": temp,
-            "humidity": humidity,
-            "wind": wind,
-            "rain": rain
-        }, None
-    except Exception as e:
-        return None, str(e)
+def check_job_feasibility(job_type, temp, humidity, wind, rain):
+    if rain > 2:
+        return "❌ 불가 (강수량)"
+    if temp < -5 or temp > 35:
+        return "⚠️ 주의 (극한 온도)"
+    if humidity > 90 and '도장' in JOB_OPTIONS.get(job_type, ''):
+        return "❌ 불가 (습도)"
+    if '타설' in JOB_OPTIONS.get(job_type, '') and rain > 0:
+        return "❌ 불가 (비 예보)"
+    return "✅ 가능"
 
-def get_forecast(lat, lon):
-    url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
-    try:
-        response = requests.get(url)
-        data = response.json()
-        forecast_list = []
-        for entry in data["list"][:8]:
-            temp = entry["main"]["temp"]
-            humidity = entry["main"]["humidity"]
-            wind = entry["wind"]["speed"]
-            rain = entry.get("rain", {}).get("3h", 0)
-            time = entry["dt_txt"]
-            forecast_list.append({
-                "time": time,
-                "temp": temp,
-                "humidity": humidity,
-                "wind": wind,
-                "rain": rain
-            })
-        return forecast_list, None
-    except Exception as e:
-        return None, str(e)
+def get_weather_from_visualcrossing(city, start_date, end_date):
+    url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}/{start_date}/{end_date}?unitGroup=metric&key={VISUAL_API_KEY}&include=days"
+    response = requests.get(url)
+    if response.status_code != 200:
+        return []
+    data = response.json()
+    return data.get("days", [])
 
-def get_risk_score(task, temp, humidity, wind, rain):
-    score = 100
-    if task == "콘크리트 타설":
-        if temp < 5 or temp > 30:
-            score -= 40
-        if rain > 0:
-            score -= 40
-        if wind > 7:
-            score -= 20
-    elif task == "방수공사":
-        if humidity > 85:
-            score -= 30
-        if rain > 0:
-            score -= 40
-        if temp < 5:
-            score -= 30
-    elif task == "도장공사":
-        if humidity > 85 or temp < 5:
-            score -= 40
-        if rain > 0:
-            score -= 40
-    elif task == "철근 배근":
-        if temp < -2 or rain > 0:
-            score -= 30
-    elif task == "골조 작업":
-        if wind > 10 or rain > 0:
-            score -= 40
-    return max(score, 0)
-
-def check_conditions(task, temp, humidity, wind, rain):
-    score = get_risk_score(task, temp, humidity, wind, rain)
-    if score >= 80:
-        return f"✅ 가능 (위험도 {score}점)"
-    elif score >= 50:
-        return f"⚠️ 주의 (위험도 {score}점)"
-    else:
-        return f"❌ 불가 (위험도 {score}점)"
-
-def generate_task_schedule(forecast_list):
-    task_schedule = defaultdict(list)
-    for entry in forecast_list:
-        for task in tasks:
-            result = check_conditions(task, entry["temp"], entry["humidity"], entry["wind"], entry["rain"])
+def generate_ai_schedule(forecast_list):
+    schedule = []
+    used_dates = set()
+    for job_key, job_name in JOB_OPTIONS.items():
+        for day in forecast_list:
+            date = day["datetime"]
+            if date in used_dates:
+                continue
+            temp = day.get("temp", 0)
+            humidity = day.get("humidity", 0)
+            wind = day.get("windspeed", 0)
+            rain = day.get("precip", 0)
+            result = check_job_feasibility(job_key, temp, humidity, wind, rain)
             if result.startswith("✅"):
-                task_schedule[entry["time"]].append(task)
-    return task_schedule
-
-tasks = ["콘크리트 타설", "방수공사", "도장공사", "철근 배근", "골조 작업"]
+                schedule.append({"공정": job_name, "추천일": date, "사유": result})
+                used_dates.add(date)
+                break
+    return schedule
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    result = None
-    weather = None
-    error = None
-    task = None
-    forecast_result = []
-    task_schedule = {}
-    location_name = "위치 정보 없음"
-    lat = DEFAULT_LAT
-    lon = DEFAULT_LON
+    today = datetime.now(pytz.timezone('Asia/Seoul')).date()
+    start_str = request.form.get("start_date")
+    end_str = request.form.get("end_date")
+    selected_job = request.form.get("job_type", "formwork")
 
-    if request.method == "POST":
-        try:
-            lat = float(request.form.get("lat") or DEFAULT_LAT)
-            lon = float(request.form.get("lon") or DEFAULT_LON)
-        except (TypeError, ValueError):
-            lat = DEFAULT_LAT
-            lon = DEFAULT_LON
+    start_date = datetime.strptime(start_str, "%Y-%m-%d").date() if start_str else today
+    end_date = datetime.strptime(end_str, "%Y-%m-%d").date() if end_str else today + timedelta(days=14)
 
-        location_name = reverse_geocode(lat, lon)
-        task = request.form.get("task")
-        weather, error = get_weather(lat, lon)
-        forecast, f_error = get_forecast(lat, lon)
-        if not error:
-            result = check_conditions(task, **weather)
-        if not f_error:
-            for f in forecast:
-                judgment = check_conditions(task, f["temp"], f["humidity"], f["wind"], f["rain"])
-                f["judgment"] = judgment
-            forecast_result = forecast
-            task_schedule = generate_task_schedule(forecast)
+    forecast_list = get_weather_from_visualcrossing(CITY, start_date.isoformat(), end_date.isoformat())
+    ai_schedule = generate_ai_schedule(forecast_list)
 
-    return render_template("index.html", tasks=tasks, result=result, weather=weather, error=error, selected_task=task, forecast=forecast_result, schedule=task_schedule, location=location_name, lat=lat, lon=lon)
+    # 판단 리스트
+    times, temps, humidities, winds, rains, judgments = [], [], [], [], [], []
+    for day in forecast_list:
+        dt = datetime.strptime(day["datetime"], "%Y-%m-%d")
+        temp = day.get("temp", 0)
+        humidity = day.get("humidity", 0)
+        wind = day.get("windspeed", 0)
+        rain = day.get("precip", 0)
+        result = check_job_feasibility(selected_job, temp, humidity, wind, rain)
+
+        times.append(dt.strftime('%m-%d'))
+        temps.append(temp)
+        humidities.append(humidity)
+        winds.append(wind)
+        rains.append(비)
+        judgments.append(result)
+
+    df = pd.DataFrame({
+        "시간": times,
+        "기온 (°C)": temps,
+        "습도 (%)": humidities,
+        "풍속 (m/s)": winds,
+        "강수량 (mm)": rains,
+        "작업 판단": judgments
+    })
+
+    # Excel 저장
+    excel_path = "/mnt/data/ai_schedule.xlsx"
+    pd.DataFrame(ai_schedule).to_excel(excel_path, index=False)
+
+    # Gantt 차트 저장
+    df_ai = pd.DataFrame(ai_schedule)
+    if not df_ai.empty:
+        df_ai['시작일'] = pd.to_datetime(df_ai['추천일'])
+        df_ai['종료일'] = df_ai['시작일'] + pd.Timedelta(days=1)
+        fig, ax = plt.subplots(figsize=(10, 4))
+        for i, row in df_ai.iterrows():
+            ax.barh(row['공정'], (row['종료일'] - row['시작일']).days, left=row['시작일'], height=0.4)
+        ax.set_xlabel("날짜")
+        ax.set_ylabel("공정명")
+        ax.set_title("🤖 AI 추천 공정 스케줄 (Gantt Chart)")
+        plt.tight_layout()
+        gantt_path = "/mnt/data/ai_schedule_gantt_chart.png"
+        fig.savefig(gantt_path)
+        plt.close(fig)
+
+    return render_template("index.html",
+        df=df.values.tolist(),
+        columns=df.columns.tolist(),
+        job_options=JOB_OPTIONS,
+        job_key=selected_job,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+        ai_schedule=ai_schedule
+    )
+
+@app.route("/download/excel")
+def download_excel():
+    return send_file("/mnt/data/ai_schedule.xlsx", as_attachment=True)
+
+@app.route("/download/chart")
+def download_chart():
+    return send_file("/mnt/data/ai_schedule_gantt_chart.png", as_attachment=True)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(debug=True)
