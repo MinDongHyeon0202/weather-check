@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 API_KEY = os.getenv("API_KEY")
 CITY = "Seoul"
-VISUAL_API_KEY = os.getenv("VISUAL_API_KEY")
+VISUAL_API_KEY = os.getenv("R7QNF6MDDL3YE8D5SY3A3XGQH")
 
 JOB_OPTIONS = {
     "formwork": "외부비계설치",
@@ -116,12 +116,11 @@ def index():
     end_date = datetime.strptime(end_str, "%Y-%m-%d").date() if end_str else today + timedelta(days=14)
 
     forecast_list = get_weather_from_visualcrossing(CITY, start_date.isoformat(), end_date.isoformat())
-
     ai_schedule = generate_ai_schedule(forecast_list) if mode == "ai" else []
 
-    # 판단 리스트
-    times, temps, humidities, winds, rains, judgments = [], [], [], [], [], []
+    df = pd.DataFrame()
     if mode != "ai":
+        times, temps, humidities, winds, rains, judgments = [], [], [], [], [], []
         for day in forecast_list:
             dt = datetime.strptime(day["datetime"], "%Y-%m-%d")
             temp = day.get("temp", 0)
@@ -137,29 +136,27 @@ def index():
             rains.append(rain)
             judgments.append(result)
 
-    df = pd.DataFrame({
-        "시간": times,
-        "기온 (°C)": temps,
-        "습도 (%)": humidities,
-        "풍속 (m/s)": winds,
-        "강수량 (mm)": rains,
-        "작업 판단": judgments
-    }) if mode != "ai" else pd.DataFrame()
+        df = pd.DataFrame({
+            "시간": times,
+            "기온 (°C)": temps,
+            "습도 (%)": humidities,
+            "풍속 (m/s)": winds,
+            "강수량 (mm)": rains,
+            "작업 판단": judgments
+        })
 
-    # Excel 저장
-    pd.DataFrame(ai_schedule).to_excel("/mnt/data/ai_schedule.xlsx", index=False)
-
-    # Gantt 차트 저장
-    df_ai = pd.DataFrame(ai_schedule)
-    if not df_ai.empty:
+    # Excel & Gantt 저장 (AI 모드일 때만)
+    if ai_schedule:
+        pd.DataFrame(ai_schedule).to_excel("/mnt/data/ai_schedule.xlsx", index=False)
+        df_ai = pd.DataFrame(ai_schedule)
         df_ai['시작일'] = pd.to_datetime(df_ai['추천일'])
         df_ai['종료일'] = df_ai['시작일'] + pd.Timedelta(days=1)
         fig, ax = plt.subplots(figsize=(10, 4))
-        for i, row in df_ai.iterrows():
-            ax.barh(row['공정'], (row['종료일'] - row['시작일']).days, left=row['시작일'], height=0.4)
+        for _, row in df_ai.iterrows():
+            ax.barh(row['공정'], 1, left=row['시작일'], height=0.4)
         ax.set_xlabel("날짜")
         ax.set_ylabel("공정명")
-        ax.set_title("🤖 AI 추천 공정 스케줄 (Gantt Chart)")
+        ax.set_title("🤖 AI 추천 공정표")
         plt.tight_layout()
         fig.savefig("/mnt/data/ai_schedule_gantt_chart.png")
         plt.close(fig)
