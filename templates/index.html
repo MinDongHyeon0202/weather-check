@@ -10,51 +10,54 @@
     th { background-color: #f0f0f0; }
     .warning { color: red; font-weight: bold; }
     .ok { color: green; font-weight: bold; }
+    .btn-container { margin-top: 20px; display: flex; gap: 20px; }
+    button, .btn-link { padding: 10px 16px; font-size: 14px; cursor: pointer; text-decoration: none; background: #eee; border: 1px solid #ccc; border-radius: 4px; }
   </style>
 </head>
 <body>
   <h2>🌤 건설 작업 판단 시스템</h2>
 
-  <!-- 판단 모드 폼 -->
-  <form method="post">
-    <input type="hidden" name="mode" value="judge">
-    <label for="job_type">작업 종류 선택:</label>
-    <select name="job_type">
-      {% for key, label in job_options.items() %}
-        <option value="{{ key }}" {% if job_key == key %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    <label>날짜:</label>
-    <input type="date" name="start_date" value="{{ start_date }}">
-    ~
-    <input type="date" name="end_date" value="{{ end_date }}">
-    <button type="submit">🔍 공정 판단 조회</button>
-  </form>
+  <div class="btn-container">
+    <form method="post">
+      <input type="hidden" name="mode" value="judge">
+      <label for="job_type">작업 선택:</label>
+      <select name="job_type">
+        {% for key, label in job_options.items() %}
+          <option value="{{ key }}" {% if job_key == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label>기간:</label>
+      <input type="date" name="start_date" value="{{ start_date }}">
+      ~
+      <input type="date" name="end_date" value="{{ end_date }}">
+      <button type="submit">🔍 판단하기</button>
+    </form>
 
-  <!-- AI 모드 폼 -->
-<form method="post">
-    <input type="hidden" name="mode" value="judge">
-    <input type="hidden" name="mode" value="ai">
-    <input type="hidden" name="start_date" value="{{ start_date }}">
-    <input type="hidden" name="end_date" value="{{ end_date }}">
-    <button type="submit">🤖 AI 공정표 생성</button>
-  </form>
+    <form method="post">
+      <input type="hidden" name="mode" value="ai">
+      <input type="hidden" name="start_date" value="{{ start_date }}">
+      <input type="hidden" name="end_date" value="{{ end_date }}">
+      <button type="submit">🤖 AI 공정표 생성</button>
+    </form>
+  </div>
 
   {% if df and df|length > 0 %}
-    <h3>✅ 선택된 공정 판단 결과</h3>
+    <h3>📋 판단 결과</h3>
     <table>
-      <tr>
-        {% for col in columns %}
-          <th>{{ col }}</th>
-        {% endfor %}
-      </tr>
-      {% for row in df %}
+      <thead>
+        <tr>
+          {% for col in columns %}<th>{{ col }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in df %}
         <tr>
           {% for cell in row %}
-            <td class="{% if '❌' in cell %}warning{% elif '✅' in cell %}ok{% endif %}">{{ cell }}</td>
+          <td class="{% if '❌' in cell %}warning{% elif '✅' in cell %}ok{% endif %}">{{ cell }}</td>
           {% endfor %}
         </tr>
-      {% endfor %}
+        {% endfor %}
+      </tbody>
     </table>
   {% endif %}
 
@@ -74,9 +77,9 @@
         {% endfor %}
       </tbody>
     </table>
-    <div style="margin-top: 20px">
-      <a href="/download/excel">📥 Excel 다운로드</a>
-      <a href="/download/chart">🖼 Gantt 차트 다운로드</a>
+    <div class="btn-container">
+      <a href="/download/excel" class="btn-link">📥 Excel 다운로드</a>
+      <a href="/download/chart" class="btn-link">🖼 Gantt 차트 다운로드</a>
     </div>
   {% endif %}
 </body>
