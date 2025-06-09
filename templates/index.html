@@ -32,7 +32,8 @@
   </form>
 
   <!-- AI 모드 폼 -->
-  <form method="post" style="margin-top: 20px">
+<form method="post">
+    <input type="hidden" name="mode" value="judge">
     <input type="hidden" name="mode" value="ai">
     <input type="hidden" name="start_date" value="{{ start_date }}">
     <input type="hidden" name="end_date" value="{{ end_date }}">
