@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 import requests, os
 from datetime import datetime, timedelta
 import pytz
+from dotenv import load_dotenv
+
+# 환경 변수 로드
+load_dotenv()
 
 VISUAL_API_KEY = os.getenv("R7QNF6MDDL3YE8D5SY3A3XGQH")
 CITY = "Seoul"
@@ -12,6 +16,7 @@ CHART_PATH = "ai_schedule_gantt_chart.png"
 
 app = Flask(__name__)
 
+# 작업 목록
 JOB_OPTIONS = {
     "formwork": "외부비계설치",
     "concrete_floor": "기초타설",
@@ -21,26 +26,39 @@ JOB_OPTIONS = {
     "roof": "지붕 타설"
 }
 
+# 작업 판단 로직
 def check_job_feasibility(job_type, temp, humidity, wind, rain):
     label = JOB_OPTIONS.get(job_type, '')
-    if rain > 2: return "? 불가 (강수량)"
-    if temp < -5 or temp > 35: return "?? 주의 (극한 온도)"
-    if humidity > 90 and "도장" in label: return "? 불가 (습도)"
-    if "타설" in label and rain > 0: return "? 불가 (비 예보)"
+    if rain > 2:
+        return "? 불가 (강수량)"
+    if temp < -5 or temp > 35:
+        return "?? 주의 (극한 온도)"
+    if humidity > 90 and "도장" in label:
+        return "? 불가 (습도)"
+    if "타설" in label and rain > 0:
+        return "? 불가 (비 예보)"
     return "? 가능"
 
+# 날씨 데이터 가져오기
 def get_weather(city, start, end):
     url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}/{start}/{end}?unitGroup=metric&key={VISUAL_API_KEY}&include=days"
     res = requests.get(url)
     return res.json().get("days", []) if res.status_code == 200 else []
 
+# AI 공정 추천 생성
 def generate_ai_schedule(forecast):
     result, used = [], set()
     for job, name in JOB_OPTIONS.items():
         for day in forecast:
-            if day["datetime"] in used: continue
-            if check_job_feasibility(job, day["temp"], day["humidity"], day["windspeed"], day["precip"]).startswith("?"):
-                result.append({"공정": name, "추천일": day["datetime"], "사유": "? 가능"})
+            if day["datetime"] in used:
+                continue
+            temp = day["temp"]
+            humidity = day["humidity"]
+            wind = day["windspeed"]
+            rain = day["precip"]
+            judgment = check_job_feasibility(job, temp, humidity, wind, rain)
+            if judgment.startswith("?"):
+                result.append({"공정": name, "추천일": day["datetime"], "사유": judgment})
                 used.add(day["datetime"])
                 break
     return result
@@ -60,8 +78,10 @@ def index():
     if mode != "ai":
         df = pd.DataFrame([{
             "시간": datetime.strptime(d["datetime"], "%Y-%m-%d").strftime('%m-%d'),
-            "기온 (°C)": d["temp"], "습도 (%)": d["humidity"],
-            "풍속 (m/s)": d["windspeed"], "강수량 (mm)": d["precip"],
+            "기온 (°C)": d["temp"],
+            "습도 (%)": d["humidity"],
+            "풍속 (m/s)": d["windspeed"],
+            "강수량 (mm)": d["precip"],
             "작업 판단": check_job_feasibility(job, d["temp"], d["humidity"], d["windspeed"], d["precip"])
         } for d in forecast])
 
@@ -88,11 +108,12 @@ def index():
     )
 
 @app.route("/download/excel")
-def download_excel(): return send_file(EXCEL_PATH, as_attachment=True)
+def download_excel():
+    return send_file(EXCEL_PATH, as_attachment=True)
 
 @app.route("/download/chart")
-def download_chart(): return send_file(CHART_PATH, as_attachment=True)
+def download_chart():
+    return send_file(CHART_PATH, as_attachment=True)
 
 if __name__ == "__main__":
     app.run(debug=True)
-
