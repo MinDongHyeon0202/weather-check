@@ -7,13 +7,20 @@ import os
 from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 
+# 환경변수 로딩
 load_dotenv()
+
 app = Flask(__name__)
 
-API_KEY = os.getenv("API_KEY")
-CITY = "Seoul"
+# 환경변수에서 API 키 로드
 VISUAL_API_KEY = os.getenv("R7QNF6MDDL3YE8D5SY3A3XGQH")
+CITY = "Seoul"
 
+# 파일 저장 경로 상수
+EXCEL_PATH = "./ai_schedule.xlsx"
+CHART_PATH = "./ai_schedule_gantt_chart.png"
+
+# 공정 옵션 정의
 JOB_OPTIONS = {
     "formwork": "외부비계설치",
     "fence": "휀스설치",
@@ -66,25 +73,30 @@ JOB_OPTIONS = {
     "paving": "포장"
 }
 
+# 작업 가능 여부 판단 함수
 def check_job_feasibility(job_type, temp, humidity, wind, rain):
+    label = JOB_OPTIONS.get(job_type, '')
     if rain > 2:
         return "❌ 불가 (강수량)"
     if temp < -5 or temp > 35:
         return "⚠️ 주의 (극한 온도)"
-    if humidity > 90 and '도장' in JOB_OPTIONS.get(job_type, ''):
+    if humidity > 90 and "도장" in label:
         return "❌ 불가 (습도)"
-    if '타설' in JOB_OPTIONS.get(job_type, '') and rain > 0:
+    if "타설" in label and rain > 0:
         return "❌ 불가 (비 예보)"
     return "✅ 가능"
 
+# 날씨 데이터 API 호출
 def get_weather_from_visualcrossing(city, start_date, end_date):
     url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}/{start_date}/{end_date}?unitGroup=metric&key={VISUAL_API_KEY}&include=days"
     response = requests.get(url)
     if response.status_code != 200:
+        print("⚠️ 날씨 API 요청 실패:", response.status_code)
         return []
     data = response.json()
     return data.get("days", [])
 
+# AI 방식 추천 공정표 생성
 def generate_ai_schedule(forecast_list):
     schedule = []
     used_dates = set()
@@ -104,6 +116,7 @@ def generate_ai_schedule(forecast_list):
                 break
     return schedule
 
+# 메인 페이지 라우터
 @app.route("/", methods=["GET", "POST"])
 def index():
     today = datetime.now(pytz.timezone('Asia/Seoul')).date()
@@ -145,9 +158,9 @@ def index():
             "작업 판단": judgments
         })
 
-    # Excel & Gantt 저장 (AI 모드일 때만)
+    # AI 모드 결과 저장
     if ai_schedule:
-        pd.DataFrame(ai_schedule).to_excel("/mnt/data/ai_schedule.xlsx", index=False)
+        pd.DataFrame(ai_schedule).to_excel(EXCEL_PATH, index=False)
         df_ai = pd.DataFrame(ai_schedule)
         df_ai['시작일'] = pd.to_datetime(df_ai['추천일'])
         df_ai['종료일'] = df_ai['시작일'] + pd.Timedelta(days=1)
@@ -158,7 +171,7 @@ def index():
         ax.set_ylabel("공정명")
         ax.set_title("🤖 AI 추천 공정표")
         plt.tight_layout()
-        fig.savefig("/mnt/data/ai_schedule_gantt_chart.png")
+        fig.savefig(CHART_PATH)
         plt.close(fig)
 
     return render_template("index.html",
@@ -171,13 +184,15 @@ def index():
         ai_schedule=ai_schedule
     )
 
+# 다운로드 라우트
 @app.route("/download/excel")
 def download_excel():
-    return send_file("/mnt/data/ai_schedule.xlsx", as_attachment=True)
+    return send_file(EXCEL_PATH, as_attachment=True)
 
 @app.route("/download/chart")
 def download_chart():
-    return send_file("/mnt/data/ai_schedule_gantt_chart.png", as_attachment=True)
+    return send_file(CHART_PATH, as_attachment=True)
 
+# 앱 실행
 if __name__ == "__main__":
     app.run(debug=True)
