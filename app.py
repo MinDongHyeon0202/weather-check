@@ -109,30 +109,33 @@ def index():
     today = datetime.now(pytz.timezone('Asia/Seoul')).date()
     start_str = request.form.get("start_date")
     end_str = request.form.get("end_date")
+    mode = request.form.get("mode")
     selected_job = request.form.get("job_type", "formwork")
 
     start_date = datetime.strptime(start_str, "%Y-%m-%d").date() if start_str else today
     end_date = datetime.strptime(end_str, "%Y-%m-%d").date() if end_str else today + timedelta(days=14)
 
     forecast_list = get_weather_from_visualcrossing(CITY, start_date.isoformat(), end_date.isoformat())
-    ai_schedule = generate_ai_schedule(forecast_list)
+
+    ai_schedule = generate_ai_schedule(forecast_list) if mode == "ai" else []
 
     # 판단 리스트
     times, temps, humidities, winds, rains, judgments = [], [], [], [], [], []
-    for day in forecast_list:
-        dt = datetime.strptime(day["datetime"], "%Y-%m-%d")
-        temp = day.get("temp", 0)
-        humidity = day.get("humidity", 0)
-        wind = day.get("windspeed", 0)
-        rain = day.get("precip", 0)
-        result = check_job_feasibility(selected_job, temp, humidity, wind, rain)
+    if mode != "ai":
+        for day in forecast_list:
+            dt = datetime.strptime(day["datetime"], "%Y-%m-%d")
+            temp = day.get("temp", 0)
+            humidity = day.get("humidity", 0)
+            wind = day.get("windspeed", 0)
+            rain = day.get("precip", 0)
+            result = check_job_feasibility(selected_job, temp, humidity, wind, rain)
 
-        times.append(dt.strftime('%m-%d'))
-        temps.append(temp)
-        humidities.append(humidity)
-        winds.append(wind)
-        rains.append(비)
-        judgments.append(result)
+            times.append(dt.strftime('%m-%d'))
+            temps.append(temp)
+            humidities.append(humidity)
+            winds.append(wind)
+            rains.append(rain)
+            judgments.append(result)
 
     df = pd.DataFrame({
         "시간": times,
@@ -141,11 +144,10 @@ def index():
         "풍속 (m/s)": winds,
         "강수량 (mm)": rains,
         "작업 판단": judgments
-    })
+    }) if mode != "ai" else pd.DataFrame()
 
     # Excel 저장
-    excel_path = "/mnt/data/ai_schedule.xlsx"
-    pd.DataFrame(ai_schedule).to_excel(excel_path, index=False)
+    pd.DataFrame(ai_schedule).to_excel("/mnt/data/ai_schedule.xlsx", index=False)
 
     # Gantt 차트 저장
     df_ai = pd.DataFrame(ai_schedule)
@@ -159,8 +161,7 @@ def index():
         ax.set_ylabel("공정명")
         ax.set_title("🤖 AI 추천 공정 스케줄 (Gantt Chart)")
         plt.tight_layout()
-        gantt_path = "/mnt/data/ai_schedule_gantt_chart.png"
-        fig.savefig(gantt_path)
+        fig.savefig("/mnt/data/ai_schedule_gantt_chart.png")
         plt.close(fig)
 
     return render_template("index.html",
