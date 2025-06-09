@@ -3,8 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>건설 작업 판단 시스템</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 40px; }
     table { border-collapse: collapse; width: 100%; margin-top: 20px; }
@@ -26,12 +24,10 @@
         <option value="{{ key }}" {% if job_key == key %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
-    <br><br>
-    <label>날짜 범위:</label>
+    <label>날짜:</label>
     <input type="date" name="start_date" value="{{ start_date }}">
     ~
     <input type="date" name="end_date" value="{{ end_date }}">
-    <br><br>
     <button type="submit">🔍 공정 판단 조회</button>
   </form>
 
@@ -43,8 +39,8 @@
     <button type="submit">🤖 AI 공정표 생성</button>
   </form>
 
-  {% if df %}
-    <h3>✅ 현재 선택된 작업: {{ job_options[job_key] }}</h3>
+  {% if df and df|length > 0 %}
+    <h3>✅ 선택된 공정 판단 결과</h3>
     <table>
       <tr>
         {% for col in columns %}
@@ -54,11 +50,7 @@
       {% for row in df %}
         <tr>
           {% for cell in row %}
-            {% if loop.index0 == 5 %}
-              <td class="{% if '❌' in cell %}warning{% elif '✅' in cell %}ok{% endif %}">{{ cell }}</td>
-            {% else %}
-              <td>{{ cell }}</td>
-            {% endif %}
+            <td class="{% if '❌' in cell %}warning{% elif '✅' in cell %}ok{% endif %}">{{ cell }}</td>
           {% endfor %}
         </tr>
       {% endfor %}
@@ -66,28 +58,24 @@
   {% endif %}
 
   {% if ai_schedule and ai_schedule|length > 0 %}
-    <h3>🤖 AI 추천 공정 스케줄</h3>
-    <table border="1" cellpadding="5" cellspacing="0">
+    <h3>🤖 AI 추천 공정표</h3>
+    <table>
       <thead>
-        <tr style="background-color:#f0f0f0">
-          <th>공정</th>
-          <th>추천일</th>
-          <th>판단 사유</th>
-        </tr>
+        <tr><th>공정</th><th>추천일</th><th>사유</th></tr>
       </thead>
       <tbody>
-        {% for row in ai_schedule %}
+        {% for item in ai_schedule %}
         <tr>
-          <td>{{ row['공정'] }}</td>
-          <td>{{ row['추천일'] }}</td>
-          <td>{{ row['사유'] }}</td>
+          <td>{{ item['공정'] }}</td>
+          <td>{{ item['추천일'] }}</td>
+          <td>{{ item['사유'] }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-    <div style="margin-top: 20px;">
-      <a href="/download/excel" class="btn">📥 Excel 다운로드</a>
-      <a href="/download/chart" class="btn">🖼️ Gantt 차트 다운로드</a>
+    <div style="margin-top: 20px">
+      <a href="/download/excel">📥 Excel 다운로드</a>
+      <a href="/download/chart">🖼 Gantt 차트 다운로드</a>
     </div>
   {% endif %}
 </body>
