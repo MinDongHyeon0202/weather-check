@@ -10,13 +10,7 @@
     th { background-color: #f0f0f0; }
     .warning { color: red; font-weight: bold; background-color: #ffe6e6; }
     .ok { color: green; font-weight: bold; background-color: #e6ffe6; }
-    .btn-container {
-      margin-top: 20px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      align-items: center;
-    }
+    .btn-container { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 20px; }
     button, .btn-link {
       padding: 10px 16px;
       font-size: 14px;
@@ -32,8 +26,8 @@
 
   <h2>🌤 건설 작업 판단 시스템</h2>
 
-  <!-- 🔧 항상 보이는 두 가지 기능 버튼 -->
   <div class="btn-container">
+    <!-- 🔍 판단하기 버튼 -->
     <form method="post">
       <input type="hidden" name="mode" value="judge">
       <label for="job_type">작업 선택:</label>
@@ -49,7 +43,7 @@
       <button type="submit">🔍 판단하기</button>
     </form>
 
-    <!-- AI 공정표 요청 버튼 (항상 출력) -->
+    <!-- 🤖 AI 공정표 생성 버튼 (항상 보임!) -->
     <form method="post">
       <input type="hidden" name="mode" value="ai">
       <input type="hidden" name="start_date" value="{{ start_date }}">
@@ -58,20 +52,22 @@
     </form>
   </div>
 
-  <!-- 🧾 판단 결과 -->
+  <!-- 판단 결과 -->
   {% if df and df|length > 0 %}
     <h3>📋 판단 결과</h3>
     <table>
       <thead>
         <tr>
-          {% for col in columns %}<th>{{ col }}</th>{% endfor %}
+          {% for col in columns %}
+            <th>{{ col }}</th>
+          {% endfor %}
         </tr>
       </thead>
       <tbody>
         {% for row in df %}
         <tr>
           {% for cell in row %}
-          <td class="{% if '❌' in cell %}warning{% elif '✅' in cell %}ok{% endif %}">{{ cell }}</td>
+            <td class="{% if '❌' in cell %}warning{% elif '✅' in cell %}ok{% endif %}">{{ cell }}</td>
           {% endfor %}
         </tr>
         {% endfor %}
@@ -79,7 +75,7 @@
     </table>
   {% endif %}
 
-  <!-- 🤖 AI 추천 공정표 -->
+  <!-- AI 공정표 출력 -->
   {% if ai_schedule and ai_schedule|length > 0 %}
     <h3>🤖 AI 추천 공정표</h3>
     <table>
