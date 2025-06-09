@@ -1,83 +1,212 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>건설 공정 판단 시스템</title>
-</head>
-
-<body>
-  <div class="container">
-    <h1>건설 공정 판단 시스템 🌦️</h1>
-
-    {% if location %}
-      <p>📍 현재 위치: <strong>{{ location }}</strong></p>
-    {% endif %}
-
-    <form method="POST">
-      <label for="task">공정을 선택하세요:</label>
-      <select name="task" id="task" required>
-        {% for t in tasks %}
-          <option value="{{ t }}" {% if selected_task == t %}selected{% endif %}>{{ t }}</option>
-        {% endfor %}
-      </select>
-
-      <!-- 숨은 위경도 필드 -->
-      <input type="hidden" name="lat" id="lat" />
-      <input type="hidden" name="lon" id="lon" />
-
-      <button type="submit">판단하기</button>
-    </form>
-
-    {% if result %}
-      <p>📋 판단 결과: {{ result }}</p>
-    {% endif %}
-
-    {% if forecast %}
-      <h3>📅 시간별 공정 판단 예보</h3>
-      <table border="1" cellpadding="5">
-        <tr>
-          <th>시간</th><th>기온</th><th>습도</th><th>풍속</th><th>강수</th><th>판단</th>
-        </tr>
-        {% for f in forecast %}
-        <tr>
-          <td>{{ f.time }}</td>
-          <td>{{ f.temp }}</td>
-          <td>{{ f.humidity }}</td>
-          <td>{{ f.wind }}</td>
-          <td>{{ f.rain }}</td>
-          <td>{{ f.judgment }}</td>
-        </tr>
-        {% endfor %}
-      </table>
-    {% endif %}
-
-    {% if schedule %}
-      <h3>📌 시간대별 가능한 공정 스케줄</h3>
-      <table border="1" cellpadding="5">
-        <tr>
-          <th>시간</th><th>가능한 공정</th>
-        </tr>
-        {% for t, plist in schedule.items() %}
-        <tr>
-          <td>{{ t }}</td>
-          <td>{{ plist | join(', ') }}</td>
-        </tr>
-        {% endfor %}
-      </table>
-    {% endif %}
-  </div>
+  <meta charset="UTF-8">
+  <title>건설 작업 판단 시스템</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #aaa; padding: 8px; text-align: center; }
+    th { background-color: #f0f0f0; }
+    .warning { color: red; font-weight: bold; }
+    .ok { color: green; font-weight: bold; }
+  </style>
 
   <script>
-    navigator.geolocation.getCurrentPosition(
-      function (position) {
-        document.getElementById("lat").value = position.coords.latitude;
-        document.getElementById("lon").value = position.coords.longitude;
-      },
-      function (error) {
-        console.warn("📍 위치 정보를 불러올 수 없습니다:", error.message);
+    window.onload = function () {
+      if (navigator.geolocation) {
+        const latField = document.querySelector("input[name='lat']");
+        const lonField = document.querySelector("input[name='lon']");
+
+        // 이미 입력 필드가 있으면 다시 추가하지 않음
+        if (!latField || !lonField) {
+          navigator.geolocation.getCurrentPosition(function (position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            const form = document.querySelector("form");
+            const latInput = document.createElement("input");
+            const lonInput = document.createElement("input");
+
+            latInput.type = lonInput.type = "hidden";
+            latInput.name = "lat";
+            lonInput.name = "lon";
+            latInput.value = lat;
+            lonInput.value = lon;
+
+            form.appendChild(latInput);
+            form.appendChild(lonInput);
+
+            // ❗ 추가 안전장치
+            if (!sessionStorage.getItem("location_submitted")) {
+              sessionStorage.setItem("location_submitted", "true");
+              form.submit();
+            }
+          });
+        }
       }
-    );
+    };
   </script>
+
+
+
+
+</head>
+<body>
+  <h2>🌤 건설 작업 판단 시스템</h2>
+
+  <form method="post">
+    <label for="job_type">작업 종류 선택:</label>
+    <select name="job_type" onchange="this.form.submit()">
+      {% for key, label in job_options.items() %}
+        <option value="{{ key }}" {% if job_key == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label><input type="radio" name="filter" value="" onchange="this.form.submit()" {% if not filter %}checked{% endif %}> 전체 보기</label>
+    <label><input type="radio" name="filter" value="ok" onchange="this.form.submit()" {% if filter == 'ok' %}checked{% endif %}> 작업 가능만</label>
+    <label><input type="radio" name="filter" value="warning" onchange="this.form.submit()" {% if filter == 'warning' %}checked{% endif %}> 작업 불가만</label>
+
+    <br><br>
+    <label>표시할 항목 선택:</label><br>
+    <input type="checkbox" name="graph_items" value="temp" {% if 'temp' in graph_items %}checked{% endif %}> 기온
+    <input type="checkbox" name="graph_items" value="humidity" {% if 'humidity' in graph_items %}checked{% endif %}> 습도
+    <input type="checkbox" name="graph_items" value="wind" {% if 'wind' in graph_items %}checked{% endif %}> 풍속
+    <input type="checkbox" name="graph_items" value="rain" {% if 'rain' in graph_items %}checked{% endif %}> 강수량
+
+    <br><br>
+    <label>날짜 범위 선택:</label>
+    <input type="date" name="start_date" value="{{ start_date }}">
+    ~
+    <input type="date" name="end_date" value="{{ end_date }}">
+    <button type="submit">조회</button>
+  </form>
+
+  <h3>✅ 현재 선택된 작업: {{ job_name }}</h3>
+
+  {% if labels %}
+    <canvas id="weatherChart" width="1000" height="400"></canvas>
+
+    <table>
+      <tr>
+        {% for col in columns %}
+          <th>{{ col }}</th>
+        {% endfor %}
+      </tr>
+      {% for row in df %}
+        <tr>
+          {% for cell in row %}
+            {% if loop.index0 == 5 %}
+              <td class="{% if '❌' in cell %}warning{% elif '✅' in cell %}ok{% endif %}">{{ cell }}</td>
+            {% else %}
+              <td>{{ cell }}</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </table>
+
+    <script>
+      const labels = {{ labels|tojson }};
+      const temps = {{ temps|tojson }};
+      const humidities = {{ humidities|tojson }};
+      const winds = {{ winds|tojson }};
+      const rains = {{ rains|tojson }};
+      const judgments = {{ judgments|tojson }};
+      const selectedItems = {{ graph_items|tojson }};
+
+      const datasets = [];
+
+      if (selectedItems.includes("temp")) {
+        datasets.push({ label: '기온 (°C)', data: temps, borderColor: 'red', yAxisID: 'y' });
+      }
+      if (selectedItems.includes("humidity")) {
+        datasets.push({ label: '습도 (%)', data: humidities, borderColor: 'blue', yAxisID: 'y1' });
+      }
+      if (selectedItems.includes("wind")) {
+        datasets.push({ label: '풍속 (m/s)', data: winds, borderColor: 'green', yAxisID: 'y2' });
+      }
+      if (selectedItems.includes("rain")) {
+        datasets.push({ label: '강수량 (mm)', data: rains, borderColor: 'purple', yAxisID: 'y3' });
+      }
+
+      const annotations = labels.map((label, i) => (
+        judgments[i].includes('❌') ? {
+          type: 'line',
+          xMin: i,
+          xMax: i,
+          borderColor: 'red',
+          borderWidth: 2,
+          borderDash: [6, 6],
+          label: {
+            content: judgments[i].replace('❌ ', ''),
+            enabled: true,
+            position: 'start',
+            backgroundColor: 'rgba(255, 0, 0, 0.8)',
+            color: 'white',
+            font: { weight: 'bold' }
+          }
+        } : null
+      )).filter(Boolean);
+
+      const ctx = document.getElementById('weatherChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: '시간별 날씨 데이터와 작업 판단' },
+            annotation: { annotations: annotations }
+          },
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            y: { type: 'linear', display: true, position: 'left' },
+            y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }},
+            y2: { type: 'linear', display: false },
+            y3: { type: 'linear', display: false }
+          }
+        }
+      });
+    </script>
+  {% else %}
+    <p style="color:red;">❗ 날씨 데이터를 불러오지 못했습니다.</p>
+ 
+ {% endif %}
+{% if ai_schedule and ai_schedule|length > 0 %}
+  <h3>🤖 AI 추천 공정 스케줄</h3>
+  <table border="1" cellpadding="5" cellspacing="0">
+    <thead>
+      <tr style="background-color:#f0f0f0">
+        <th>공정</th>
+        <th>추천일</th>
+        <th>판단 사유</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in ai_schedule %}
+      <tr>
+        <td>{{ row['공정'] }}</td>
+        <td>{{ row['추천일'] }}</td>
+        <td>{{ row['사유'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p style="color:gray;">AI 추천 가능한 공정이 없습니다.</p>
+{% endif %}
+
+<div style="margin-top: 20px;">
+  <a href="/download/excel" class="btn">📥 Excel 다운로드</a>
+  <a href="/download/chart" class="btn">🖼️ Gantt 차트 다운로드</a>
+</div>
+
 </body>
 </html>
